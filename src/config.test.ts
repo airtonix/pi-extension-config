@@ -9,14 +9,20 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createConfigService } from './config.ts';
 
 const require = createRequire(import.meta.url);
-const vfs = require('node-vfs-polyfill') as {
+type NewType = {
+  // eslint-disable-next-line no-unused-vars
   create: (provider: unknown, options?: Record<string, unknown>) => MountedVfs;
   MemoryProvider: new () => unknown;
 };
 
+const vfs = require('node-vfs-polyfill') as NewType;
+
 type MountedVfs = {
+  // eslint-disable-next-line no-unused-vars
   mkdirSync: (filePath: string, options?: { recursive?: boolean }) => void;
+  // eslint-disable-next-line no-unused-vars
   writeFileSync: (filePath: string, contents: string) => void;
+  // eslint-disable-next-line no-unused-vars
   mount: (mountPoint: string) => void;
   unmount: () => void;
 };
