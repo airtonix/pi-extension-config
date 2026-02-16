@@ -1,0 +1,20 @@
+{
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "description": "Whether the demo greeting is enabled.",
+      "default": true,
+      "type": "boolean"
+    },
+    "greeting": {
+      "description": "The greeting message to use.",
+      "default": "Hello",
+      "type": "string"
+    },
+    "defaultName": {
+      "description": "The default name to greet if no name is provided.",
+      "default": "World",
+      "type": "string"
+    }
+  }
+}

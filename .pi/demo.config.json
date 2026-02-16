@@ -1,0 +1,4 @@
+{
+  "$schema": "./extensions/demo-config.schema.json",
+  "greeting": "Hello, welcome to the demo!"
+}
