@@ -1,33 +1,115 @@
 # pi-extension-config
 
-Configuration helpers for Pi extensions
+Type-safe, layered configuration for Pi extensions.
 
-> A Bun module created from the [bun-module](https://github.com/zenobi-us/bun-module) template
+- stores config in `~/.pi/agent/<name>.config.json` and `.pi/<name>.config.json`
+- supports environment variable overrides (`MYEXT_SOME_KEY`)
+- optional validation with custom parser (byo schema like Zod/Typebox/Arktype/etc)
+- unified API for reading/updating/saving config
 
 ## Usage
 
-<!-- Example usage code goes here -->
+`pi-extension-config` provides a unified configuration service for Pi extensions with automatic config discovery and layered priority resolution.
+
+**Config sources (highest priority first):**
+
+1. **Environment variables** — `MYEXT_SOME_KEY` (prefix derived from app name)
+2. **Project config** — `.pi/<name>.config.json` (in git root or cwd)
+3. **Home config** — `~/.pi/agent/<name>.config.json`
+4. **Defaults** — passed when creating the service
+
+```typescript
+import { createConfigService } from 'pi-extension-config';
+
+
+export default function MyExtension(pi: ExtensionApi) {
+  // Create a typed config service
+  const service = await createConfigService<MyConfig>('my-extension', {
+    defaults: { timeout: 30, verbose: false },
+    parse: (raw) => mySchema.parse(raw), // optional validation
+  });
+
+  // Read config
+  console.log(service.config.timeout); // 30
+
+  // Update and persist
+  await service.set('timeout', 60, 'project');
+  await service.save('project');
+
+  // Reload from disk
+  await service.reload();
+}
+```
 
 ## Installation
 
-<!-- Installation instructions go here -->
+```bash
+# bun
+bun add pi-extension-config
+
+# npm
+npm install pi-extension-config
+
+# pnpm
+pnpm add pi-extension-config
+
+# yarn
+yarn add pi-extension-config
+```
+
+## API
+
+### `createConfigService<TConfig>(name, options?)`
+
+Creates a configuration service instance.
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | `string` | Extension name (used for file paths and env prefix) |
+| `options.defaults` | `Partial<TConfig>` | Default values |
+| `options.parse` | `(raw: unknown) => TConfig \| Promise<TConfig>` | Optional parser/validator |
+
+### `ConfigService<TConfig>`
+
+| Property/Method | Description |
+|-----------------|-------------|
+| `config` | Current configuration object (readonly) |
+| `set(key, value, target?)` | Set a key (`target`: `'home'` or `'project'`) |
+| `save(target?)` | Persist changes to disk |
+| `reload()` | Reload configuration from all sources |
 
 ## Development
 
-- `mise run build` - Build the module
-- `mise run test` - Run tests
-- `mise run lint` - Lint code
-- `mise run lint:fix` - Fix linting issues
-- `mise run format` - Format code with Prettier
-
-## Release
-
-See the [RELEASE.md](RELEASE.md) file for instructions on how to release a new version of the module.
+```bash
+mise run build      # Build the module
+mise run test       # Run tests
+mise run lint       # Lint code
+mise run lint:fix   # Fix linting issues
+mise run format     # Format with Prettier
+```
 
 ## Contributing
 
-Contributions are welcome! Please file issues or submit pull requests on the GitHub repository.
+Contributions welcome! Here's how:
+
+1. **Fork** the repository
+2. **Create a branch** for your feature: `git checkout -b feat/my-feature`
+3. **Make changes** and add tests
+4. **Run checks**: `mise run lint && mise run test`
+5. **Commit** using [Conventional Commits](https://www.conventionalcommits.org/): `feat: add feature`
+6. **Open a PR** against `main`
+
+### Code Style
+
+- Single quotes, 2-space indentation, 100 char line width
+- Explicit TypeScript types preferred
+- Early returns over deep nesting
+- Run `mise run format` before committing
+
+## Release
+
+See [RELEASE.md](RELEASE.md) for release instructions.
 
 ## License
 
-See the [LICENSE](LICENSE) file for details.
+See [LICENSE](LICENSE) for details.
