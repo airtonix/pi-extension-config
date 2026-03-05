@@ -1,39 +1,32 @@
 # Project Summary
 
 ## Current State
-- Status: research-complete
-- Active Epic: [epic-f72d1b89](./epic-f72d1b89-event-handler-file-watcher.md) - Event Handler and File Watcher
-- Completed Phase: [phase-8d45ab54](./phase-8d45ab54-research-file-watching.md) - Research File Watching ✅
-- Next Phase: [phase-b2c3d4e5](./phase-b2c3d4e5-design-api.md) - Design API Surface
-- Active Story: [story-004f4365](./story-004f4365-deferred-file-watching.md) - Deferred File Watching via Event Handlers
-- Last Updated: 2026-02-17T18:42:00+10:30
+- Status: execution-in-progress
+- Active Epic: [epic-c4d82f1a](./epic-c4d82f1a-settings-migrations-framework.md) — Settings Migrations Framework
+- Planning Phase: [phase-5a9e2c7b](./phase-5a9e2c7b-settings-migration-planning.md) — completed
+- Research Basis: [research-e7b31d4f](./research-e7b31d4f-jot-settings-migration-patterns.md), [research-9a0b1c2d](./research-9a0b1c2d-settings-migration-contract-qna.md)
+- Last Updated: 2026-03-05T23:44:00+10:30
 
-## Epic Vision
+## Approved Contract Snapshot
+- `createConfigService(name, { defaults, parse, migrations, versionKey?, exposeVersion? })`
+- `Migration<From,To> = { id, up(config), down(config) }` with required `down` and immutability
+- ordering by array index, missing version defaults to `0`
+- load flow: `raw -> migrate -> merge defaults -> parse`
+- startup helper: latest-only + fail-fast
+- preview flag: print plan and exit; configurable preview exit mode
+- detailed result payload for JSON + `pitui.notify` display helper
 
-Add event-driven architecture to ConfigService with **deferred file watching** - file watchers only activate when consumers register event handlers via `configService.on('change', handler)`. This provides zero overhead for simple use cases while enabling reactive patterns for those who need them.
-
-## Research Findings (Complete)
-
-Key decisions from research:
-1. **Use `fs.watch`** - Node.js compatible API, works well in Bun
-2. **Use EventEmitter lifecycle hooks** - `newListener`/`removeListener` enable deferred activation
-3. **Debounce with 100ms** - Avoid rapid-fire reloads on file save
-4. **Return unsubscribe from `on()`** - Ergonomic cleanup pattern
-
-See: [research-8109f577](./research-8109f577-file-watching-patterns.md)
-
-## Phase Progress
-
-| Phase | Status | Description |
-|-------|--------|-------------|
-| Research | ✅ completed | Bun file watchers, event emitter patterns |
-| Design | 🔜 awaiting review | Define API surface and types |
-| Implementation | ⏳ pending | Build event emitter and deferred watcher |
-| Testing | ⏳ pending | Unit tests for events and watcher lifecycle |
-| Documentation | ⏳ pending | Update README and examples |
+## Planning Progress
+| Stage | Status | Artifact |
+|---|---|---|
+| Idea | ✅ complete | learning-a13f9c2e |
+| Epic Definition | ✅ complete | epic-c4d82f1a |
+| Research | ✅ complete | research-e7b31d4f, research-9a0b1c2d |
+| Phase Planning | ✅ complete | phase-5a9e2c7b |
+| Story Definition | ✅ complete | story-1c2d3e4f, story-2d3e4f5a, story-3e4f5a6b, story-4f5a6b7c |
+| Task Breakdown | ✅ complete | task-5a6b7c8d, task-6b7c8d9e, task-7c8d9e0f, task-8d9e0f1a |
 
 ## Next Milestones
-
-1. **[NEEDS-HUMAN]** Review research findings and approve design phase
-2. Define TypeScript interfaces for event subscription
-3. Create implementation plan with file watching integration
+1. Start epic completion review and distill final learnings.
+2. Decide whether to proceed directly to release prep or a follow-up hardening phase.
+3. Keep migration docs/tests in sync as implementation evolves.
