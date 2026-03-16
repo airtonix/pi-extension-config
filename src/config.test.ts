@@ -188,6 +188,15 @@ function writeJsonFile(filePath: string, config: Record<string, unknown>): void 
   fs.writeFileSync(filePath, JSON.stringify(config));
 }
 
+async function createReadyConfigService<TConfig>(
+  name: string,
+  options?: Parameters<typeof createConfigService<TConfig>>[1]
+): Promise<Awaited<ReturnType<typeof createConfigService<TConfig>>>> {
+  const service = await createConfigService<TConfig>(name, options);
+  await service.ready;
+  return service;
+}
+
 describe('createConfigService', () => {
   const createdFilePaths: string[] = [];
 
@@ -227,7 +236,7 @@ describe('createConfigService', () => {
       createdFilePaths.push(projectFilePath);
     }
 
-    const service = await createConfigService<MatrixConfig>(appName, {
+    const service = await createReadyConfigService<MatrixConfig>(appName, {
       defaults: testCase.hasDefaults ? DEFAULTS : undefined,
       parse: parseMatrixConfig,
     });
@@ -238,7 +247,7 @@ describe('createConfigService', () => {
   it('supports generic-only typing without a parse function', async () => {
     type TypedConfig = { featureEnabled: boolean };
 
-    const service = await createConfigService<TypedConfig>(`typed-only-${randomUUID()}`, {
+    const service = await createReadyConfigService<TypedConfig>(`typed-only-${randomUUID()}`, {
       defaults: { featureEnabled: true },
     });
 
@@ -256,7 +265,7 @@ describe('createConfigService', () => {
     });
     createdFilePaths.push(projectFilePath);
 
-    const service = await createConfigService(appName, {
+    const service = await createReadyConfigService(appName, {
       parse: async (input: unknown) => parseValidatedConfig(input),
     });
 
@@ -274,7 +283,7 @@ describe('createConfigService', () => {
     createdFilePaths.push(projectFilePath);
 
     await expect(
-      createConfigService(appName, {
+      createReadyConfigService(appName, {
         parse: parseValidatedConfig,
       })
     ).rejects.toThrowError('Invalid config: "retryCount" must be a number.');
@@ -289,7 +298,7 @@ describe('createConfigService', () => {
     });
     createdFilePaths.push(projectFilePath);
 
-    const service = await createConfigService<MatrixConfig>(appName, {
+    const service = await createReadyConfigService<MatrixConfig>(appName, {
       defaults: DEFAULTS,
       parse: parseMatrixConfig,
     });
@@ -308,7 +317,7 @@ describe('createConfigService', () => {
   it('set + save(project) persists updates', async () => {
     const appName = `save-project-${randomUUID()}`;
 
-    const service = await createConfigService<MatrixConfig>(appName, {
+    const service = await createReadyConfigService<MatrixConfig>(appName, {
       defaults: DEFAULTS,
       parse: parseMatrixConfig,
     });
@@ -319,7 +328,7 @@ describe('createConfigService', () => {
     await service.set('shared', 'saved-project', 'project');
     await service.save('project');
 
-    const reloadedService = await createConfigService<MatrixConfig>(appName, {
+    const reloadedService = await createReadyConfigService<MatrixConfig>(appName, {
       defaults: DEFAULTS,
       parse: parseMatrixConfig,
     });
@@ -330,7 +339,7 @@ describe('createConfigService', () => {
   it('set + save(home) persists updates', async () => {
     const appName = `save-home-${randomUUID()}`;
 
-    const service = await createConfigService<MatrixConfig>(appName, {
+    const service = await createReadyConfigService<MatrixConfig>(appName, {
       defaults: DEFAULTS,
       parse: parseMatrixConfig,
     });
@@ -341,7 +350,7 @@ describe('createConfigService', () => {
     await service.set('shared', 'saved-home', 'home');
     await service.save('home');
 
-    const reloadedService = await createConfigService<MatrixConfig>(appName, {
+    const reloadedService = await createReadyConfigService<MatrixConfig>(appName, {
       defaults: DEFAULTS,
       parse: parseMatrixConfig,
     });
@@ -389,7 +398,7 @@ describe('createConfigService', () => {
       },
     ];
 
-    const service = await createConfigService<Record<string, unknown>>(appName, {
+    const service = await createReadyConfigService<Record<string, unknown>>(appName, {
       migrations,
     });
 
@@ -423,7 +432,7 @@ describe('createConfigService', () => {
       },
     ];
 
-    const service = await createConfigService<Record<string, unknown>>(appName, {
+    const service = await createReadyConfigService<Record<string, unknown>>(appName, {
       migrations,
     });
 
@@ -463,14 +472,14 @@ describe('createConfigService', () => {
       },
     ];
 
-    const hidden = await createConfigService<Record<string, unknown>>(appName, {
+    const hidden = await createReadyConfigService<Record<string, unknown>>(appName, {
       migrations,
       versionKey: 'schemaVersion',
     });
 
     expect(hidden.config).not.toHaveProperty('schemaVersion');
 
-    const exposed = await createConfigService<Record<string, unknown>>(appName, {
+    const exposed = await createReadyConfigService<Record<string, unknown>>(appName, {
       migrations,
       versionKey: 'schemaVersion',
       exposeVersion: true,
@@ -507,7 +516,7 @@ describe('createConfigService', () => {
       },
     ];
 
-    const service = await createConfigService<Record<string, unknown>>(appName, {
+    const service = await createReadyConfigService<Record<string, unknown>>(appName, {
       defaults: {
         defaultOnly: 'default',
       },
@@ -530,5 +539,124 @@ describe('createConfigService', () => {
       migratedOnly: 'migrated',
       defaultOnly: 'default',
     });
+  });
+
+  it('emits set and save lifecycle events', async () => {
+    const appName = `events-write-${randomUUID()}`;
+    const projectFilePath = path.join(PROJECT_ROOT, '.pi', `${appName}.config.json`);
+    createdFilePaths.push(projectFilePath);
+
+    const service = await createReadyConfigService<MatrixConfig>(appName, {
+      defaults: DEFAULTS,
+      parse: parseMatrixConfig,
+    });
+
+    const emitted: string[] = [];
+    service.events.on('ConfigSet', () => emitted.push('ConfigSet'));
+    service.events.on('ConfigSaving', () => emitted.push('ConfigSaving'));
+    service.events.on('ConfigReloading', () => emitted.push('ConfigReloading'));
+    service.events.on('ConfigLoaded', () => emitted.push('ConfigLoaded'));
+    service.events.on('ConfigReloaded', () => emitted.push('ConfigReloaded'));
+    service.events.on('ConfigSaved', () => emitted.push('ConfigSaved'));
+
+    await service.set('shared', 'event-saved', 'project');
+    await service.save('project');
+
+    expect(emitted).toEqual([
+      'ConfigLoaded',
+      'ConfigSet',
+      'ConfigSaving',
+      'ConfigReloading',
+      'ConfigLoaded',
+      'ConfigReloaded',
+      'ConfigSaved',
+    ]);
+  });
+
+  it('emits parse/reload failure events when reload parse fails', async () => {
+    const appName = `events-parse-failure-${randomUUID()}`;
+    const projectFilePath = path.join(PROJECT_ROOT, '.pi', `${appName}.config.json`);
+
+    writeJsonFile(projectFilePath, {
+      shared: 'ok',
+    });
+    createdFilePaths.push(projectFilePath);
+
+    let failParse = false;
+    const service = await createReadyConfigService<MatrixConfig>(appName, {
+      parse: (input: unknown): MatrixConfig => {
+        if (failParse) {
+          throw new Error('parse failed on reload');
+        }
+
+        return parseMatrixConfig(input);
+      },
+    });
+
+    const parseErrors: unknown[] = [];
+    const reloadErrors: unknown[] = [];
+    const loadErrors: unknown[] = [];
+
+    service.events.on('ConfigParseFailed', (error) => parseErrors.push(error));
+    service.events.on('ConfigReloadFailed', (error) => reloadErrors.push(error));
+    service.events.on('ConfigLoadFailed', (error) => loadErrors.push(error));
+
+    failParse = true;
+
+    await expect(service.reload()).rejects.toThrowError('parse failed on reload');
+    expect(parseErrors).toHaveLength(1);
+    expect(reloadErrors).toHaveLength(1);
+    expect(loadErrors).toHaveLength(1);
+  });
+
+  it('emits migration applied and noop events on reload', async () => {
+    const appName = `events-migration-status-${randomUUID()}`;
+    const projectFilePath = path.join(PROJECT_ROOT, '.pi', `${appName}.config.json`);
+
+    writeJsonFile(projectFilePath, {
+      feature: 'legacy',
+      __configVersion: 1,
+      enabled: true,
+    });
+    createdFilePaths.push(projectFilePath);
+
+    const migrations: Migration[] = [
+      {
+        id: '0-to-1',
+        up: (config: Record<string, unknown>): Record<string, unknown> => ({
+          ...config,
+          enabled: true,
+        }),
+        down: (config: Record<string, unknown>): Record<string, unknown> => ({
+          feature: config.feature,
+        }),
+      },
+    ];
+
+    const service = await createReadyConfigService<Record<string, unknown>>(appName, {
+      migrations,
+    });
+
+    let appliedCount = 0;
+    let noopCount = 0;
+
+    service.events.on('MigrationApplied', () => {
+      appliedCount += 1;
+    });
+
+    service.events.on('MigrationNoop', () => {
+      noopCount += 1;
+    });
+
+    await service.reload();
+
+    writeJsonFile(projectFilePath, {
+      feature: 'legacy',
+    });
+
+    await service.reload();
+
+    expect(noopCount).toBe(1);
+    expect(appliedCount).toBe(1);
   });
 });

@@ -1,5 +1,6 @@
 export { createConfigService } from './config.ts';
 export type { ConfigParseFn, ConfigService, CreateConfigServiceOptions } from './config.ts';
+export { ConfigEventEmitter } from './config.ts';
 
 export {
   getMigrationResultJson,
